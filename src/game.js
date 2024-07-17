@@ -129,6 +129,10 @@ function drawPlayerLocation()
     temp.forEach((pos) =>{
         drawCircle(pos, 10);
     })
+    let temp2 = verticalIntersectionScan(directionVector.normalise());
+    temp2.forEach((pos) =>{
+        drawCircle(pos, 10, "green");
+    })
 }
 
 function getCellTopLeftCoord(row, col){
@@ -192,10 +196,54 @@ function horizontalIntersectionScan(ray){
     return horizontalIntersections
 }
 
-function drawCircle(centre, radius){
+function verticalIntersectionScan(ray){
+    let verticalIntersections = [];
+    let currentPos = new Vec2(playerX, playerY);
+    ray = ray.normalise();
+
+    const theta = Math.acos(ray.dot(new Vec2(1, 0)));
+    // Ray facing left
+    if(ray.y < 0)
+    {
+        let x = currentPos.x % CELL_WIDTH;
+        let nextPos = currentPos.add(new Vec2(CELL_WIDTH-x, -(CELL_WIDTH-x)*Math.tan(theta)));
+        if (nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
+            currentPos = nextPos;
+            verticalIntersections.push(currentPos);
+        }
+        while (currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
+            nextPos = currentPos.add(new Vec2(CELL_WIDTH, -(CELL_WIDTH*Math.tan(theta))));
+            if (nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
+                verticalIntersections.push(nextPos);
+            }
+            currentPos = nextPos;
+        }
+    }
+
+    // Ray facing down
+    else if (ray.y > 0){
+        let x = currentPos.x % CELL_WIDTH;
+        let nextPos = currentPos.add(new Vec2(CELL_WIDTH-x, (CELL_WIDTH-x)*Math.tan(theta)));
+        if (nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
+            currentPos = nextPos;
+            verticalIntersections.push(currentPos);
+        }
+        while (currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
+            nextPos = currentPos.add(new Vec2(CELL_WIDTH, (CELL_WIDTH*Math.tan(theta))));
+            if (nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
+                verticalIntersections.push(nextPos);
+            }
+            currentPos = nextPos;
+        }
+    }
+
+    return verticalIntersections
+}
+
+function drawCircle(centre, radius, colour="purple"){
     context.beginPath();
     context.arc(...centre.asArray(), radius, 0, 2*Math.PI);
-    context.fillStyle = "purple";
+    context.fillStyle = colour;
     context.fill();
     context.stroke()
 }
