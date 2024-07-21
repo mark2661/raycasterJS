@@ -13,11 +13,14 @@ let mouseY = 0;
 let context = canvas.getContext("2d");
 
 let map = [
-           [0, 0, 0, 1, 0, 0],
-           [0, 0, 0, 1, 0, 0],
-           [0, 0, 0, 0, 0, 0],
-           [0, 0, 0, 0, 0, 0],
-           [0, 0, 0, 0, 1, 1]
+           [0, 0, 0, 1, 0, 0, 0, 0],
+           [0, 0, 0, 1, 0, 0, 0, 0],
+           [0, 0, 0, 0, 0, 0, 0, 0],
+           [0, 0, 0, 0, 0, 0, 0, 0],
+           [0, 0, 0, 0, 0, 0, 0, 0],
+           [0, 0, 0, 0, 0, 0, 0, 0],
+           [0, 0, 0, 0, 0, 0, 0, 0],
+           [0, 0, 0, 0, 1, 0, 0, 0]
           ];
 
 const CELL_WIDTH = Math.floor(canvas.width / map[0].length);
@@ -197,44 +200,90 @@ function horizontalIntersectionScan(ray){
 }
 
 function verticalIntersectionScan(ray){
+    // TODO: Implement logic for rays facing to the left
     let verticalIntersections = [];
     let currentPos = new Vec2(playerX, playerY);
     ray = ray.normalise();
 
     const theta = Math.acos(ray.dot(new Vec2(1, 0)));
-    // Ray facing left
+    debug(theta * (180/Math.PI));
+    // Ray facing up
     if(ray.y < 0)
     {
-        let x = currentPos.x % CELL_WIDTH;
-        let nextPos = currentPos.add(new Vec2(CELL_WIDTH-x, -(CELL_WIDTH-x)*Math.tan(theta)));
-        if (nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
-            currentPos = nextPos;
-            verticalIntersections.push(currentPos);
-        }
-        while (currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
-            nextPos = currentPos.add(new Vec2(CELL_WIDTH, -(CELL_WIDTH*Math.tan(theta))));
+        // Ray facing right
+        if(theta < (Math.PI/2)){
+            let x = currentPos.x % CELL_WIDTH;
+            let nextPos = currentPos.add(new Vec2(CELL_WIDTH - x, -(CELL_WIDTH - x) * Math.tan(theta)));
             if (nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
-                verticalIntersections.push(nextPos);
+                currentPos = nextPos;
+                verticalIntersections.push(currentPos);
             }
-            currentPos = nextPos;
+            while (currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
+                nextPos = currentPos.add(new Vec2(CELL_WIDTH, -(CELL_WIDTH * Math.tan(theta))));
+                if (nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
+                    verticalIntersections.push(nextPos);
+                }
+                currentPos = nextPos;
+            }   
         }
+
+        // Ray facing left
+        else if (theta > (Math.PI/2))
+        {
+            let x = currentPos.x % CELL_WIDTH;
+            let nextPos = currentPos.add(new Vec2(-x, x * Math.tan(theta)));
+            if (nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
+                currentPos = nextPos;
+                verticalIntersections.push(currentPos);
+            }
+            while (currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
+                nextPos = currentPos.add(new Vec2(-CELL_WIDTH, (CELL_WIDTH * Math.tan(theta))));
+                if (nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
+                    verticalIntersections.push(nextPos);
+                }
+                currentPos = nextPos;
+            }
+        }
+        
     }
 
     // Ray facing down
     else if (ray.y > 0){
-        let x = currentPos.x % CELL_WIDTH;
-        let nextPos = currentPos.add(new Vec2(CELL_WIDTH-x, (CELL_WIDTH-x)*Math.tan(theta)));
-        if (nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
-            currentPos = nextPos;
-            verticalIntersections.push(currentPos);
-        }
-        while (currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
-            nextPos = currentPos.add(new Vec2(CELL_WIDTH, (CELL_WIDTH*Math.tan(theta))));
+        // Ray facing right
+        if(theta < (Math.PI/2)){
+            let x = currentPos.x % CELL_WIDTH;
+            let nextPos = currentPos.add(new Vec2(CELL_WIDTH - x, (CELL_WIDTH - x) * Math.tan(theta)));
             if (nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
-                verticalIntersections.push(nextPos);
+                currentPos = nextPos;
+                verticalIntersections.push(currentPos);
             }
-            currentPos = nextPos;
+            while (currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
+                nextPos = currentPos.add(new Vec2(CELL_WIDTH, (CELL_WIDTH * Math.tan(theta))));
+                if (nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
+                    verticalIntersections.push(nextPos);
+                }
+                currentPos = nextPos;
+            }
         }
+
+        // Ray facing left
+        else if(theta > (Math.PI/2)){
+            let x = currentPos.x % CELL_WIDTH;
+            let nextPos = currentPos.add(new Vec2(-x, -x*Math.tan(theta)));
+            if (nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
+                currentPos = nextPos;
+                verticalIntersections.push(currentPos);
+            }
+            while (currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
+                nextPos = currentPos.add(new Vec2(-CELL_WIDTH, -(CELL_WIDTH * Math.tan(theta))));
+                if (nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
+                    verticalIntersections.push(nextPos);
+                }
+                currentPos = nextPos;
+            }
+        }
+
+
     }
 
     return verticalIntersections
