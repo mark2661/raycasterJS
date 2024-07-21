@@ -14,17 +14,19 @@ let context = canvas.getContext("2d");
 
 let map = [
            [0, 0, 0, 1, 0, 0, 0, 0],
-           [0, 0, 0, 1, 0, 0, 0, 0],
-           [0, 0, 0, 0, 0, 0, 0, 0],
-           [0, 0, 0, 0, 0, 0, 0, 0],
-           [0, 0, 0, 0, 0, 0, 0, 0],
-           [0, 0, 0, 0, 0, 0, 0, 0],
-           [0, 0, 0, 0, 0, 0, 0, 0],
-           [0, 0, 0, 0, 1, 0, 0, 0]
+           [0, 1, 0, 1, 0, 0, 0, 0],
+           [0, 1, 0, 0, 0, 1, 0, 0],
+           [0, 0, 0, 0, 0, 1, 0, 0],
+           [0, 0, 0, 0, 0, 1, 0, 0],
+           [0, 1, 0, 0, 0, 1, 0, 0],
+           [0, 1, 0, 0, 1, 0, 0, 0],
+           [0, 1, 0, 0, 1, 0, 0, 0]
           ];
 
 const CELL_WIDTH = Math.floor(canvas.width / map[0].length);
 const CELL_HEIGHT = Math.floor(canvas.height / map.length);
+const MAX_ROW = map[0].length;
+const MAX_COL = map.length;
 
 class Vec2{
     constructor(x, y){
@@ -126,7 +128,7 @@ function drawPlayerLocation()
     context.lineWidth = 3;
     context.lineTo(playerPosition.x + directionVector.x, playerPosition.y + directionVector.y);
     context.stroke();
-    // debug(`MouseX: ${mousePosition.x}, MouseY: ${mousePosition.y}`);
+    debug(directionVector.normalise())
 
     let temp = horizontalIntersectionScan(directionVector.normalise());
     temp.forEach((pos) =>{
@@ -154,6 +156,27 @@ function getCellCentreCoord(row, col){
     return new Vec2(-1, -1);
 }
 
+function getCell(position){
+    if(position.x >=0 && position.x <= canvas.width && position.y >=0 && position.y <= canvas.height)
+    {
+        let row = Math.floor(position.y / CELL_HEIGHT);
+        let col = Math.floor(position.x / CELL_WIDTH);
+        if(row < MAX_ROW && col < MAX_COL){
+            return new Vec2(col, row);
+        }
+    }
+
+    // TODO: replace this with a thrown error
+    return new Vec2(-1, -1);
+}
+
+function getCellValue(location){
+    if(location.x >=0 && location.x < MAX_COL && location.y >=0 && location.y < MAX_ROW){
+        return map[location.y][location.x];
+    }
+    return -1;
+}
+
 function horizontalIntersectionScan(ray){
     let horizontalIntersections = [];
     let currentPos = new Vec2(playerX, playerY);
@@ -169,13 +192,14 @@ function horizontalIntersectionScan(ray){
             currentPos = nextPos;
             horizontalIntersections.push(currentPos);
         }
-        while (currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
+        while (!hasIntersectedWithWall(currentPos, "horizontal") && currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
             nextPos = currentPos.add(new Vec2(CELL_HEIGHT / Math.tan(theta), -CELL_HEIGHT));
             if (nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
                 horizontalIntersections.push(nextPos);
             }
             currentPos = nextPos;
         }
+
     }
 
     // Ray facing down
@@ -186,7 +210,7 @@ function horizontalIntersectionScan(ray){
             currentPos = nextPos;
             horizontalIntersections.push(currentPos);
         }
-        while (currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
+        while (!hasIntersectedWithWall(currentPos, "horizontal") && currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
             nextPos = currentPos.add(new Vec2(CELL_HEIGHT / Math.tan(theta), CELL_HEIGHT));
             if (nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
                 horizontalIntersections.push(nextPos);
@@ -194,7 +218,6 @@ function horizontalIntersectionScan(ray){
             currentPos = nextPos;
         }
     }
-
 
     return horizontalIntersections
 }
@@ -206,7 +229,6 @@ function verticalIntersectionScan(ray){
     ray = ray.normalise();
 
     const theta = Math.acos(ray.dot(new Vec2(1, 0)));
-    debug(theta * (180/Math.PI));
     // Ray facing up
     if(ray.y < 0)
     {
@@ -218,7 +240,7 @@ function verticalIntersectionScan(ray){
                 currentPos = nextPos;
                 verticalIntersections.push(currentPos);
             }
-            while (currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
+            while (!hasIntersectedWithWall(currentPos, "vertical") && currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
                 nextPos = currentPos.add(new Vec2(CELL_WIDTH, -(CELL_WIDTH * Math.tan(theta))));
                 if (nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
                     verticalIntersections.push(nextPos);
@@ -236,7 +258,7 @@ function verticalIntersectionScan(ray){
                 currentPos = nextPos;
                 verticalIntersections.push(currentPos);
             }
-            while (currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
+            while (!hasIntersectedWithWall(currentPos, "vertical") && currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
                 nextPos = currentPos.add(new Vec2(-CELL_WIDTH, (CELL_WIDTH * Math.tan(theta))));
                 if (nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
                     verticalIntersections.push(nextPos);
@@ -257,7 +279,7 @@ function verticalIntersectionScan(ray){
                 currentPos = nextPos;
                 verticalIntersections.push(currentPos);
             }
-            while (currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
+            while (!hasIntersectedWithWall(currentPos, "vertical") && currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
                 nextPos = currentPos.add(new Vec2(CELL_WIDTH, (CELL_WIDTH * Math.tan(theta))));
                 if (nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
                     verticalIntersections.push(nextPos);
@@ -274,7 +296,7 @@ function verticalIntersectionScan(ray){
                 currentPos = nextPos;
                 verticalIntersections.push(currentPos);
             }
-            while (currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
+            while (!hasIntersectedWithWall(currentPos,"vertical") && currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
                 nextPos = currentPos.add(new Vec2(-CELL_WIDTH, -(CELL_WIDTH * Math.tan(theta))));
                 if (nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
                     verticalIntersections.push(nextPos);
@@ -287,6 +309,44 @@ function verticalIntersectionScan(ray){
     }
 
     return verticalIntersections
+}
+
+function hasIntersectedWithWall(intersection_position, type="horizontal"){
+    // TODO: handle case where intersection point is at the corner of four cells
+    return (type.toLowerCase() == "horizontal") ? hasIntersectedWithWallHorizontal(intersection_position) : hasIntersectedWithWallVertical(intersection_position);
+}
+
+function hasIntersectedWithWallHorizontal(intersection_position){
+    let topCell = getCell(intersection_position.sub(new Vec2(0, 10)));
+    let bottomCell = getCell(intersection_position.add(new Vec2(0, 10)));
+    if (topCell.x !== -1 && topCell.y !== -1) {
+        if (getCellValue(topCell) === 1) {
+            return true;
+        }
+    }
+    if (bottomCell.x !== -1 && bottomCell.y !== -1) {
+        if (getCellValue(bottomCell) === 1) {
+            return true;
+        }
+    }
+    return false;
+}
+
+function hasIntersectedWithWallVertical(intersection_position){
+    let leftCell = getCell(intersection_position.sub(new Vec2(10, 0)));
+    let rightCell = getCell(intersection_position.add(new Vec2(10, 0)));
+    if(leftCell.x !== -1 && leftCell.y !== -1){
+        if(getCellValue(leftCell) === 1){
+            return true;
+        }
+    }
+    if(rightCell.x !== -1 && rightCell.y !== -1){
+        if(getCellValue(rightCell) === 1){
+            return true;
+        }
+    }
+
+    return false;
 }
 
 function drawCircle(centre, radius, colour="purple"){
