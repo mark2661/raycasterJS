@@ -398,6 +398,7 @@ function debug(text){
 
 function update()
 {
+    // TODO: Add keyboard/mouse input and update player movement/collisions
     context.clearRect(0, 0, canvas.width, canvas.height);
     drawGrid(6, 6);
     drawPlayerLocation();
