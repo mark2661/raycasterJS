@@ -54,6 +54,10 @@ class Vec2{
         return Math.sqrt(Math.pow(this.x, 2) + Math.pow(this.y, 2));
     }
 
+    distanceTo(otherVec2){
+        return Math.sqrt(Math.pow(otherVec2.x - this.x, 2) + Math.pow(otherVec2.y - this.y, 2));
+    }
+
     normalise(){
         if(this.magnitude() === 0) { return new Vec2(1, 0); }
         return new Vec2(this.x / this.magnitude(), this.y / this.magnitude());
@@ -128,25 +132,30 @@ function drawPlayerLocation()
     context.lineWidth = 3;
     context.lineTo(playerPosition.x + directionVector.x, playerPosition.y + directionVector.y);
     context.stroke();
-    debug(directionVector.normalise())
+    //debug(directionVector.normalise())
+    debug(mousePosition)
 
-    // TODO: 1. find the intersection point at the end of the horizontal and vertical arrays
-    // 2. calculate the distance to these points from the player
-    // 3. render at circle at the intersection point closest to the player. 
     let temp = horizontalIntersectionScan(directionVector.normalise());
+    let distanceToHorizontalIntersection = NaN;
+    let distanceToVerticalIntersection = NaN;
     if(temp.length > 0){
-        drawCircle(temp[temp.length-1], 10);
+        distanceToHorizontalIntersection = playerPosition.distanceTo(temp[0]);
     }
-    // temp.forEach((pos) =>{
-    //     drawCircle(pos, 10);
-    // })
+    else{
+        distanceToHorizontalIntersection = Infinity;
+    }
+
     let temp2 = verticalIntersectionScan(directionVector.normalise());
     if(temp2.length > 0){
-        drawCircle(temp2[temp2.length-1], 10, "green");
+        distanceToVerticalIntersection = playerPosition.distanceTo(temp2[0]);
     }
-    // temp2.forEach((pos) =>{
-    //     drawCircle(pos, 10, "green");
-    // })
+    else{
+        distanceToVerticalIntersection = Infinity;
+    }
+    
+    (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? drawCircle(temp[0], 10) : 
+                                                                          (distanceToVerticalIntersection !== Infinity) ? drawCircle(temp2[0], 10, "green"):
+                                                                          {};
 }
 
 function getCellTopLeftCoord(row, col){
