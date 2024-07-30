@@ -1,5 +1,6 @@
 const GRID_OFFSET = 0;
 const DIRECTION_VECTOR_SCALE = 75;
+const FOV = 60;
 let canvas = document.getElementById("main-canvas");
 let render = document.getElementById("render-canvas");
 
@@ -74,6 +75,17 @@ class Vec2{
         return (this.x * otherVec2.x) +  (this.y * otherVec2.y);
     }
 
+    rotate(angle){
+        let radian_angle = angle * (Math.PI/180);
+        let new_x = (this.x * Math.cos(radian_angle)) - (this.y * Math.sin(radian_angle)); 
+        let new_y = (this.x * Math.sin(radian_angle)) + (this.y * Math.cos(radian_angle)); 
+        return new Vec2(new_x, new_y);
+    }
+
+    equals(otherVec2){
+        return this.x === otherVec2.x && this.y === otherVec2.y;
+    }
+
     asArray(){
         return [this.x, this.y];
     }
@@ -126,35 +138,45 @@ function drawPlayerLocation()
 {
     let mousePosition = new Vec2(mouseX, mouseY);
     let playerPosition = new Vec2(playerX, playerY);
-    let directionVector = mousePosition.sub(playerPosition).normalise().scale(DIRECTION_VECTOR_SCALE);
+    let playerDirection = mousePosition.sub(playerPosition).normalise().scale(DIRECTION_VECTOR_SCALE);
 
     drawCircle(playerPosition, 10, "blue");
 
-    let horizontalInterSectionLocation = horizontalIntersectionScan(directionVector.normalise());
-    let verticalInterSectionLocation = verticalIntersectionScan(directionVector.normalise());
-    let distanceToHorizontalIntersection = NaN;
-    let distanceToVerticalIntersection = NaN;
+    // TODO: Refactor this logic into its own function
+    // RAYS
+    // for(let i=-Math.floor((FOV/2)); i=Math.floor(FOV/2); i++){
+    // for(let i=-30; i=30; i++){
+    let i = 0;
+    {
+        let rayDirection = playerDirection.rotate(i).normalise();
+        let horizontalInterSectionLocation = horizontalIntersectionScan(rayDirection);
+        let verticalInterSectionLocation = verticalIntersectionScan(rayDirection);
+        let distanceToHorizontalIntersection = NaN;
+        let distanceToVerticalIntersection = NaN;
 
-    if(horizontalInterSectionLocation.length > 0){
-        distanceToHorizontalIntersection = playerPosition.distanceTo(horizontalInterSectionLocation[0]);
-    }
-    else{
-        distanceToHorizontalIntersection = Infinity;
-    }
+        if (!horizontalInterSectionLocation.equals(new Vec2(-1, -1))) {
+            distanceToHorizontalIntersection = playerPosition.distanceTo(horizontalInterSectionLocation);
+        }
+        else {
+            distanceToHorizontalIntersection = Infinity;
+        }
 
-    if(verticalInterSectionLocation.length > 0){
-        distanceToVerticalIntersection = playerPosition.distanceTo(verticalInterSectionLocation[0]);
+        if (!verticalInterSectionLocation.equals(new Vec2(-1, -1))) {
+            distanceToVerticalIntersection = playerPosition.distanceTo(verticalInterSectionLocation);
+        }
+        else {
+            distanceToVerticalIntersection = Infinity;
+        }
+
+        // (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? drawCircle(temp[0], 10) : 
+        //                                                                       (distanceToVerticalIntersection !== Infinity) ? drawCircle(temp2[0], 10, "green"):
+        //                                                                       {};
+
+        (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? drawLine(playerPosition, horizontalInterSectionLocation, 2) :
+            (distanceToVerticalIntersection !== Infinity) ? drawLine(playerPosition, verticalInterSectionLocation, 2) :
+                {};
+
     }
-    else{
-        distanceToVerticalIntersection = Infinity;
-    }
-    
-    // (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? drawCircle(temp[0], 10) : 
-    //                                                                       (distanceToVerticalIntersection !== Infinity) ? drawCircle(temp2[0], 10, "green"):
-    //                                                                       {};
-    (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? drawLine(playerPosition, horizontalInterSectionLocation[0], 2) : 
-                                                                          (distanceToVerticalIntersection !== Infinity) ? drawLine(playerPosition, verticalInterSectionLocation[0], 2):
-                                                                          {};
 
 }
 
@@ -197,7 +219,6 @@ function getCellValue(location){
 
 function horizontalIntersectionScan(ray){
     // TODO: only add intersection point that intersects a wall, break out of loop once the first wall intersection is found
-    let horizontalIntersections = [];
     let currentPos = new Vec2(playerX, playerY);
     ray = ray.normalise();
 
@@ -208,15 +229,14 @@ function horizontalIntersectionScan(ray){
         let y = currentPos.y % CELL_HEIGHT;
         let nextPos = currentPos.add(new Vec2(y / Math.tan(theta), -y));
         if (hasIntersectedWithWall(nextPos, "horizontal") && nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
-            horizontalIntersections.push(nextPos);
+            return nextPos;
         }
         else if(nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height){
             currentPos = nextPos;
             while (!hasIntersectedWithWall(currentPos, "horizontal") && currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
                 nextPos = currentPos.add(new Vec2(CELL_HEIGHT / Math.tan(theta), -CELL_HEIGHT));
                 if (hasIntersectedWithWall(nextPos, "horizontal") && nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
-                    horizontalIntersections.push(nextPos);
-                    break;
+                    return nextPos;
                 }
                 currentPos = nextPos;
             }
@@ -229,26 +249,25 @@ function horizontalIntersectionScan(ray){
         let y = CELL_HEIGHT - (currentPos.y % CELL_HEIGHT);
         let nextPos = currentPos.add(new Vec2(y / Math.tan(theta), y));
         if (hasIntersectedWithWall(nextPos, "horizontal") && nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
-            horizontalIntersections.push(nextPos);
+            return nextPos;
         }
         else if(nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height){
             currentPos = nextPos;
             while (!hasIntersectedWithWall(currentPos, "horizontal") && currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
                 nextPos = currentPos.add(new Vec2(CELL_HEIGHT / Math.tan(theta), CELL_HEIGHT));
                 if (hasIntersectedWithWall(nextPos, "horizontal") && nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
-                    horizontalIntersections.push(nextPos);
-                    break;
+                    return nextPos
                 }
                 currentPos = nextPos;
             }
         }
     }
 
-    return horizontalIntersections
+    // TODO: possibly throw error instead
+    return new Vec2(-1, -1);
 }
 
 function verticalIntersectionScan(ray){
-    let verticalIntersections = [];
     let currentPos = new Vec2(playerX, playerY);
     ray = ray.normalise();
 
@@ -261,15 +280,14 @@ function verticalIntersectionScan(ray){
             let x = currentPos.x % CELL_WIDTH;
             let nextPos = currentPos.add(new Vec2(CELL_WIDTH - x, -(CELL_WIDTH - x) * Math.tan(theta)));
             if (hasIntersectedWithWall(nextPos, "vertical") && nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
-                verticalIntersections.push(nextPos);
+                return nextPos;
             }
             else if(nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height){
                 currentPos = nextPos;
                 while (!hasIntersectedWithWall(currentPos, "vertical") && currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
                     nextPos = currentPos.add(new Vec2(CELL_WIDTH, -(CELL_WIDTH * Math.tan(theta))));
                     if (hasIntersectedWithWall(nextPos, "vertical") && nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
-                        verticalIntersections.push(nextPos);
-                        break;
+                        return nextPos;
                     }
                     currentPos = nextPos;
                 }
@@ -282,15 +300,14 @@ function verticalIntersectionScan(ray){
             let x = currentPos.x % CELL_WIDTH;
             let nextPos = currentPos.add(new Vec2(-x, x * Math.tan(theta)));
             if (hasIntersectedWithWall(nextPos, "vertical") && nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
-                verticalIntersections.push(nextPos);
+                return nextPos;
             }
             else if(nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height){
                 currentPos = nextPos;
                 while (!hasIntersectedWithWall(currentPos, "vertical") && currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
                     nextPos = currentPos.add(new Vec2(-CELL_WIDTH, (CELL_WIDTH * Math.tan(theta))));
                     if (hasIntersectedWithWall(nextPos, "vertical") && nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
-                        verticalIntersections.push(nextPos);
-                        break;
+                        return nextPos;
                     }
                     currentPos = nextPos;
                 }
@@ -306,15 +323,14 @@ function verticalIntersectionScan(ray){
             let x = currentPos.x % CELL_WIDTH;
             let nextPos = currentPos.add(new Vec2(CELL_WIDTH - x, (CELL_WIDTH - x) * Math.tan(theta)));
             if (hasIntersectedWithWall(nextPos, "vertical") && nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
-                verticalIntersections.push(nextPos);
+                return nextPos;
             }
             else if(nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height){
                 currentPos = nextPos;
                 while (!hasIntersectedWithWall(currentPos, "vertical") && currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
                     nextPos = currentPos.add(new Vec2(CELL_WIDTH, (CELL_WIDTH * Math.tan(theta))));
                     if (hasIntersectedWithWall(nextPos, "vertical") && nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
-                        verticalIntersections.push(nextPos);
-                        break;
+                        return nextPos;
                     }
                     currentPos = nextPos;
                 }
@@ -327,15 +343,14 @@ function verticalIntersectionScan(ray){
             let nextPos = currentPos.add(new Vec2(-x, -x*Math.tan(theta)));
             // TODO: Fix possible bug, what if the players initial position is intersecting a wall, currently not checking for that.
             if (hasIntersectedWithWall(nextPos, "vertical") && nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
-                verticalIntersections.push(nextPos);
+                return nextPos;
             }
             else if(nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height){
                 currentPos = nextPos;
                 while (!hasIntersectedWithWall(currentPos, "vertical") && currentPos.x > 0 && currentPos.x < canvas.width && currentPos.y > 0 && currentPos.y < canvas.height) {
                     nextPos = currentPos.add(new Vec2(-CELL_WIDTH, -(CELL_WIDTH * Math.tan(theta))));
                     if (hasIntersectedWithWall(nextPos, "vertical") && nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
-                        verticalIntersections.push(nextPos);
-                        break;
+                        return nextPos;
                     }
                     currentPos = nextPos;
                 }
@@ -343,7 +358,7 @@ function verticalIntersectionScan(ray){
         }
     }
 
-    return verticalIntersections
+    return new Vec2(-1, -1);
 }
 
 function hasIntersectedWithWall(intersection_position, type="horizontal"){
