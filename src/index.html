@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Raycaster</title>
     <style type="text/css">
-        canvas{
+        #main-canvas{
             border: solid 1px red;
             padding-left: 0;
             padding-right: 0;
-            margin-left: auto;
+            /* margin-left: auto; */
             margin-right: auto;
             display: block;
             /* width: 800px; */
@@ -21,13 +21,31 @@
             left: 20px;
             font-size:20px;
         }
+        #render-canvas{
+            border: solid 1px green;
+            padding-left: 0;
+            padding-right: 0;
+            /* margin-left: auto; */
+            /* margin-right: auto; */
+            display: block;
+
+        }
+        #canvas-container{
+            border: solid 1px blue;
+            display: flex;
+            align-items: stretch;
+        }
+
     </style>
 </head>
 <body>
-   <canvas id="main-canvas"></canvas> 
-   <script src="game.js"></script>
-   <div id="debug-box-container">
-        <label id="debug-box"></label>
-   </div>
+    <div id="canvas-container">
+        <canvas id="main-canvas"></canvas>
+        <canvas id="render-canvas"></canvas>
+    </div>
+    <script src="game.js"></script>
+    <div id="debug-box-container">
+         <label id="debug-box"></label>
+    </div>
 </body>
 </html>

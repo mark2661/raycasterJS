@@ -1,9 +1,12 @@
 const GRID_OFFSET = 0;
 const DIRECTION_VECTOR_SCALE = 75;
 let canvas = document.getElementById("main-canvas");
+let render = document.getElementById("render-canvas");
 
 // canvas.width = window.innerWidth;
 // canvas.height = window.innerHeight;
+render.height = 800;
+render.width = 1100;
 canvas.width = 800;
 canvas.height = 800;
 let playerX = 275;
@@ -11,16 +14,20 @@ let playerY = 420;
 let mouseX = 0;
 let mouseY = 0;
 let context = canvas.getContext("2d");
+let keyState = {"w": false, "a": false, "s": false, "d":false};
 
+// Warning: Map must have square dimensions
 let map = [
-           [0, 0, 0, 1, 0, 0, 0, 0],
-           [0, 1, 0, 1, 0, 0, 0, 0],
-           [0, 1, 0, 0, 0, 1, 0, 0],
-           [0, 0, 0, 0, 0, 1, 0, 0],
-           [0, 0, 0, 0, 0, 1, 0, 0],
-           [0, 1, 0, 0, 0, 1, 0, 0],
-           [0, 1, 0, 0, 1, 0, 0, 0],
-           [0, 1, 0, 0, 1, 0, 0, 0]
+           [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+           [1, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+           [1, 1, 0, 1, 0, 0, 0, 0, 0, 1],
+           [1, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+           [1, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+           [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+           [1, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+           [1, 1, 0, 0, 1, 0, 0, 0, 0, 1],
+           [1, 1, 0, 0, 1, 0, 0, 0, 0, 1],
+           [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
           ];
 
 const CELL_WIDTH = Math.floor(canvas.width / map[0].length);
@@ -81,13 +88,11 @@ function drawGrid()
     context.beginPath();
     context.lineWidth = 1;
 
-    let cols = map[0].length;
-    let rows = map.length;
     let h = 0;
     let w = 0;
 
-    for (let row = 0; row < rows; row++) {
-        for(let col=0; col<cols; col++){
+    for (let row = 0; row < MAX_ROW; row++) {
+        for(let col=0; col< MAX_COL; col++){
             if(map[row][col] === 1)
             {
                 topLeftX = col*CELL_WIDTH;
@@ -98,18 +103,18 @@ function drawGrid()
         }
     }
 
-    for(let i=0; i<=rows; i++)
+    for(let i=0; i<=MAX_ROW; i++)
     {
         context.moveTo(0, h)
-        context.lineTo((CELL_WIDTH*cols), h)
+        context.lineTo((CELL_WIDTH*MAX_COL), h)
         context.stroke();
         h += CELL_HEIGHT;
     }
 
-    for(let i=0; i<=cols; i++)
+    for(let i=0; i<=MAX_COL; i++)
     {
         context.moveTo(w, 0);
-        context.lineTo(w, (CELL_HEIGHT*rows));
+        context.lineTo(w, (CELL_HEIGHT*MAX_ROW));
         context.stroke();
         w += CELL_WIDTH
     }
@@ -119,43 +124,38 @@ function drawGrid()
 
 function drawPlayerLocation()
 {
-    context.beginPath()
-    context.arc(playerX, playerY, 10, 0, 2 * Math.PI);
-    context.fillStyle = "blue"
-    context.fill();
-    context.stroke();
-
-    context.moveTo(playerX, playerY);
     let mousePosition = new Vec2(mouseX, mouseY);
     let playerPosition = new Vec2(playerX, playerY);
     let directionVector = mousePosition.sub(playerPosition).normalise().scale(DIRECTION_VECTOR_SCALE);
-    context.lineWidth = 3;
-    context.lineTo(playerPosition.x + directionVector.x, playerPosition.y + directionVector.y);
-    context.stroke();
-    //debug(directionVector.normalise())
-    debug(mousePosition)
 
-    let temp = horizontalIntersectionScan(directionVector.normalise());
+    drawCircle(playerPosition, 10, "blue");
+
+    let horizontalInterSectionLocation = horizontalIntersectionScan(directionVector.normalise());
+    let verticalInterSectionLocation = verticalIntersectionScan(directionVector.normalise());
     let distanceToHorizontalIntersection = NaN;
     let distanceToVerticalIntersection = NaN;
-    if(temp.length > 0){
-        distanceToHorizontalIntersection = playerPosition.distanceTo(temp[0]);
+
+    if(horizontalInterSectionLocation.length > 0){
+        distanceToHorizontalIntersection = playerPosition.distanceTo(horizontalInterSectionLocation[0]);
     }
     else{
         distanceToHorizontalIntersection = Infinity;
     }
 
-    let temp2 = verticalIntersectionScan(directionVector.normalise());
-    if(temp2.length > 0){
-        distanceToVerticalIntersection = playerPosition.distanceTo(temp2[0]);
+    if(verticalInterSectionLocation.length > 0){
+        distanceToVerticalIntersection = playerPosition.distanceTo(verticalInterSectionLocation[0]);
     }
     else{
         distanceToVerticalIntersection = Infinity;
     }
     
-    (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? drawCircle(temp[0], 10) : 
-                                                                          (distanceToVerticalIntersection !== Infinity) ? drawCircle(temp2[0], 10, "green"):
+    // (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? drawCircle(temp[0], 10) : 
+    //                                                                       (distanceToVerticalIntersection !== Infinity) ? drawCircle(temp2[0], 10, "green"):
+    //                                                                       {};
+    (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? drawLine(playerPosition, horizontalInterSectionLocation[0], 2) : 
+                                                                          (distanceToVerticalIntersection !== Infinity) ? drawLine(playerPosition, verticalInterSectionLocation[0], 2):
                                                                           {};
+
 }
 
 function getCellTopLeftCoord(row, col){
@@ -237,6 +237,7 @@ function horizontalIntersectionScan(ray){
                 nextPos = currentPos.add(new Vec2(CELL_HEIGHT / Math.tan(theta), CELL_HEIGHT));
                 if (hasIntersectedWithWall(nextPos, "horizontal") && nextPos.x > 0 && nextPos.x < canvas.width && nextPos.y > 0 && nextPos.y < canvas.height) {
                     horizontalIntersections.push(nextPos);
+                    break;
                 }
                 currentPos = nextPos;
             }
@@ -391,9 +392,28 @@ function drawCircle(centre, radius, colour="purple"){
     context.stroke()
 }
 
+function drawLine(start, end, thickness=1){
+    context.beginPath();
+    context.moveTo(...start.asArray());
+    context.lineTo(...end.asArray());
+    context.lineWidth = thickness;
+    context.stroke();
+}
+
 function debug(text){
     let debug_label = document.getElementById("debug-box");
     debug_label.innerHTML = text;
+}
+
+function updatePlayerPosition(){
+    const SPEED = 5;
+    if(keyState.w){ playerY -= SPEED}
+    else if (keyState.a) { playerX -= SPEED}
+    else if (keyState.s) { playerY += SPEED}
+    else if (keyState.d) { playerX += SPEED}
+
+    //playerX = Math.abs(playerX % canvas.width);
+    //playerY = Math.abs(playerY % canvas.height);
 }
 
 function update()
@@ -401,6 +421,7 @@ function update()
     // TODO: Add keyboard/mouse input and update player movement/collisions
     context.clearRect(0, 0, canvas.width, canvas.height);
     drawGrid(6, 6);
+    updatePlayerPosition();
     drawPlayerLocation();
     context.closePath();
 }
@@ -410,5 +431,36 @@ setInterval(update, 1000/60);
 document.addEventListener("mousemove", (event)=>{
     mouseX = event.offsetX;
     mouseY = event.offsetY;
-})
+});
+
+document.addEventListener("keydown", (event) =>{
+    if(event.key === "w") {
+        keyState.w = true;
+    }
+    else if(event.key === "a"){
+        keyState.a = true;
+    }
+    else if(event.key === "s"){
+        keyState.s = true;
+    }
+    else if (event.key === "d") {
+        keyState.d = true;
+    }
+});
+
+document.addEventListener("keyup", (event) =>{
+    if(event.key === "w") {
+        keyState.w = false;
+    }
+    else if(event.key === "a"){
+        keyState.a = false;
+    }
+    else if(event.key === "s"){
+        keyState.s = false;
+    }
+    else if (event.key === "d") {
+        keyState.d = false;
+    }
+});
+
 
