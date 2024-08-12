@@ -4,39 +4,6 @@ const FOV = 60;
 let canvas = document.getElementById("main-canvas");
 let render = document.getElementById("render-canvas");
 
-// canvas.width = window.innerWidth;
-// canvas.height = window.innerHeight;
-render.height = 800;
-render.width = 1100;
-canvas.width = 800;
-canvas.height = 800;
-let playerX = 275;
-let playerY = 420;
-let mouseX = 0;
-let mouseY = 0;
-let context = canvas.getContext("2d");
-let renderCtx = render.getContext("2d");
-let keyState = {"w": false, "a": false, "s": false, "d":false};
-
-// Warning: Map must have square dimensions
-let map = [
-           [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-           [1, 0, 0, 1, 0, 0, 0, 0, 0, 1],
-           [1, 1, 0, 1, 0, 0, 0, 0, 0, 1],
-           [1, 1, 0, 0, 0, 1, 0, 0, 0, 1],
-           [1, 0, 0, 0, 0, 1, 0, 0, 0, 1],
-           [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-           [1, 1, 0, 0, 0, 1, 0, 0, 0, 1],
-           [1, 1, 0, 0, 1, 0, 0, 0, 0, 1],
-           [1, 1, 0, 0, 1, 0, 0, 0, 0, 1],
-           [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-          ];
-
-const CELL_WIDTH = Math.floor(canvas.width / map[0].length);
-const CELL_HEIGHT = Math.floor(canvas.height / map.length);
-const MAX_ROW = map[0].length;
-const MAX_COL = map.length;
-
 class Vec2{
     constructor(x, y){
         this.x = x;
@@ -96,6 +63,43 @@ class Vec2{
     }
 };
 
+
+// canvas.width = window.innerWidth;
+// canvas.height = window.innerHeight;
+render.height = 800;
+render.width = 1100;
+canvas.width = 800;
+canvas.height = 800;
+// let playerX = 275;
+// let playerY = 420;
+let playerPosition = new Vec2(275, 420);
+let playerAngle = 0;
+let mouseX = 0;
+let mouseY = 0;
+let context = canvas.getContext("2d");
+let renderCtx = render.getContext("2d");
+let keyState = {"w": false, "a": false, "s": false, "d":false};
+
+// Warning: Map must have square dimensions
+let map = [
+           [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+           [1, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+           [1, 1, 0, 1, 0, 0, 0, 0, 0, 1],
+           [1, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+           [1, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+           [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+           [1, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+           [1, 1, 0, 0, 1, 0, 0, 0, 0, 1],
+           [1, 1, 0, 0, 1, 0, 0, 0, 0, 1],
+           [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+          ];
+
+const CELL_WIDTH = Math.floor(canvas.width / map[0].length);
+const CELL_HEIGHT = Math.floor(canvas.height / map.length);
+const MAX_ROW = map[0].length;
+const MAX_COL = map.length;
+
+
 function drawGrid()
 {
     context.beginPath();
@@ -138,8 +142,8 @@ function drawGrid()
 function drawPlayerLocation()
 {
     let mousePosition = new Vec2(mouseX, mouseY);
-    let playerPosition = new Vec2(playerX, playerY);
-    let playerDirection = mousePosition.sub(playerPosition).normalise().scale(DIRECTION_VECTOR_SCALE);
+    // let playerPosition = new Vec2(playerX, playerY);
+    // let playerDirection = mousePosition.sub(playerPosition).normalise().scale(DIRECTION_VECTOR_SCALE);
 
     drawCircle(playerPosition, 10, "blue");
 
@@ -221,7 +225,8 @@ function getCellValue(location){
 
 function horizontalIntersectionScan(ray){
     // TODO: only add intersection point that intersects a wall, break out of loop once the first wall intersection is found
-    let currentPos = new Vec2(playerX, playerY);
+    // let currentPos = new Vec2(playerX, playerY);
+    let currentPos = playerPosition;
     ray = ray.normalise();
 
     const theta = Math.acos(ray.dot(new Vec2(1, 0)));
@@ -270,7 +275,8 @@ function horizontalIntersectionScan(ray){
 }
 
 function verticalIntersectionScan(ray){
-    let currentPos = new Vec2(playerX, playerY);
+    // let currentPos = new Vec2(playerX, playerY);
+    let currentPos = playerPosition;
     ray = ray.normalise();
 
     const theta = Math.acos(ray.dot(new Vec2(1, 0)));
@@ -430,7 +436,8 @@ function castRay(playerPosition, playerDirection, angle){
         (distanceToVerticalIntersection !== Infinity) ? drawLine(playerPosition, verticalInterSectionLocation, 2) :
             {};
     
-    return (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? distanceToHorizontalIntersection : distanceToVerticalIntersection;
+    // TODO: Return perpendicular distance to wall
+    return (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? distanceToHorizontalIntersection*Math.cos(degreeToRadian(angle)) : distanceToVerticalIntersection*Math.cos(degreeToRadian(angle));
     
 
 }
@@ -462,15 +469,31 @@ function debug(text){
     debug_label.innerHTML = text;
 }
 
-function updatePlayerPosition(){
+function degreeToRadian(angle){
+    return angle * (Math.PI / 180);
+}
+
+function updatePlayerPosition(playerDirection){
+    // TODO: make player advance in the direction it is currently facing
     const SPEED = 5;
-    if(keyState.w){ playerY -= SPEED}
-    else if (keyState.a) { playerX -= SPEED}
-    else if (keyState.s) { playerY += SPEED}
-    else if (keyState.d) { playerX += SPEED}
+    if(keyState.w){ playerPosition = playerPosition.add(playerDirection.scale(SPEED))}
+    else if (keyState.s) {playerPosition = playerPosition.sub(playerDirection.scale(SPEED))}
 
     //playerX = Math.abs(playerX % canvas.width);
     //playerY = Math.abs(playerY % canvas.height);
+}
+
+function updatePlayerDirection(){
+    const ROTATION_SPEED = 2;
+    if(keyState.k){ playerAngle -= ROTATION_SPEED}
+    else if (keyState.l) { playerAngle += ROTATION_SPEED}
+    if(playerAngle < 0) {
+        playerAngle = 360;
+    } 
+
+    if(playerAngle > 360){
+        playerAngle = 0;
+    }
 }
 
 function render3DWall(distanceToWall, x, w){
@@ -487,13 +510,17 @@ function update()
     context.clearRect(0, 0, canvas.width, canvas.height);
     renderCtx.clearRect(0, 0, render.width, render.height);
     drawGrid(6, 6);
-    updatePlayerPosition();
+    // const playerPosition = new Vec2(playerX, playerY);
+    const playerDirection = playerPosition.rotate(playerAngle).normalise();
+    updatePlayerDirection();
+    updatePlayerPosition(playerDirection);
     drawPlayerLocation();
+    debug(`X: ${playerPosition.x}, Y: ${playerPosition.y}`)
 
     // Cast rays
-    const playerPosition = new Vec2(playerX, playerY);
     const mousePosition = new Vec2(mouseX, mouseY);
-    const playerDirection = mousePosition.sub(playerPosition).normalise().scale(DIRECTION_VECTOR_SCALE);
+    // const playerDirection = mousePosition.sub(playerPosition).normalise().scale(DIRECTION_VECTOR_SCALE);
+    //const playerDirection = playerPosition.rotate(playerAngle).normalise();
     const stripWidth = (render.width/Math.floor(FOV));
     for(let i=-Math.floor(FOV/2); i<Math.floor(FOV/2); i++){
         let distanceToWall = castRay(playerPosition, playerDirection, i);
@@ -527,6 +554,12 @@ document.addEventListener("keydown", (event) =>{
     else if (event.key === "d") {
         keyState.d = true;
     }
+    else if (event.key === "k") {
+        keyState.k = true;
+    }
+    else if (event.key === "l") {
+        keyState.l = true;
+    }
 });
 
 document.addEventListener("keyup", (event) =>{
@@ -541,6 +574,12 @@ document.addEventListener("keyup", (event) =>{
     }
     else if (event.key === "d") {
         keyState.d = false;
+    }
+    else if (event.key === "k") {
+        keyState.k = false;
+    }
+    else if (event.key === "l") {
+        keyState.l = false;
     }
 });
 
