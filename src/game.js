@@ -15,6 +15,7 @@ let playerY = 420;
 let mouseX = 0;
 let mouseY = 0;
 let context = canvas.getContext("2d");
+let renderCtx = render.getContext("2d");
 let keyState = {"w": false, "a": false, "s": false, "d":false};
 
 // Warning: Map must have square dimensions
@@ -145,38 +146,39 @@ function drawPlayerLocation()
     // TODO: Refactor this logic into its own function
     // RAYS
     // for(let i=-Math.floor((FOV/2)); i=Math.floor(FOV/2); i++){
-    // for(let i=-30; i=30; i++){
-    let i = 0;
-    {
-        let rayDirection = playerDirection.rotate(i).normalise();
-        let horizontalInterSectionLocation = horizontalIntersectionScan(rayDirection);
-        let verticalInterSectionLocation = verticalIntersectionScan(rayDirection);
-        let distanceToHorizontalIntersection = NaN;
-        let distanceToVerticalIntersection = NaN;
+    // TODO: FOR loops causing program to crash for some reason, might be because this function is called the the setIntervalFunction
+    // for(let i=0; i=30; i++){
+    // let i = 0;
+    // {
+        // let rayDirection = playerDirection.rotate(i).normalise();
+        // let horizontalInterSectionLocation = horizontalIntersectionScan(rayDirection);
+        // let verticalInterSectionLocation = verticalIntersectionScan(rayDirection);
+        // let distanceToHorizontalIntersection = NaN;
+        // let distanceToVerticalIntersection = NaN;
 
-        if (!horizontalInterSectionLocation.equals(new Vec2(-1, -1))) {
-            distanceToHorizontalIntersection = playerPosition.distanceTo(horizontalInterSectionLocation);
-        }
-        else {
-            distanceToHorizontalIntersection = Infinity;
-        }
+        // if (!horizontalInterSectionLocation.equals(new Vec2(-1, -1))) {
+        //     distanceToHorizontalIntersection = playerPosition.distanceTo(horizontalInterSectionLocation);
+        // }
+        // else {
+        //     distanceToHorizontalIntersection = Infinity;
+        // }
 
-        if (!verticalInterSectionLocation.equals(new Vec2(-1, -1))) {
-            distanceToVerticalIntersection = playerPosition.distanceTo(verticalInterSectionLocation);
-        }
-        else {
-            distanceToVerticalIntersection = Infinity;
-        }
+        // if (!verticalInterSectionLocation.equals(new Vec2(-1, -1))) {
+        //     distanceToVerticalIntersection = playerPosition.distanceTo(verticalInterSectionLocation);
+        // }
+        // else {
+        //     distanceToVerticalIntersection = Infinity;
+        // }
 
-        // (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? drawCircle(temp[0], 10) : 
-        //                                                                       (distanceToVerticalIntersection !== Infinity) ? drawCircle(temp2[0], 10, "green"):
-        //                                                                       {};
+        // // (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? drawCircle(temp[0], 10) : 
+        // //                                                                       (distanceToVerticalIntersection !== Infinity) ? drawCircle(temp2[0], 10, "green"):
+        // //                                                                       {};
 
-        (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? drawLine(playerPosition, horizontalInterSectionLocation, 2) :
-            (distanceToVerticalIntersection !== Infinity) ? drawLine(playerPosition, verticalInterSectionLocation, 2) :
-                {};
+        // (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? drawLine(playerPosition, horizontalInterSectionLocation, 2) :
+        //     (distanceToVerticalIntersection !== Infinity) ? drawLine(playerPosition, verticalInterSectionLocation, 2) :
+        //         {};
 
-    }
+    // }
 
 }
 
@@ -399,6 +401,40 @@ function hasIntersectedWithWallVertical(intersection_position){
     return false;
 }
 
+function castRay(playerPosition, playerDirection, angle){
+    let rayDirection = playerDirection.rotate(angle).normalise();
+    let horizontalInterSectionLocation = horizontalIntersectionScan(rayDirection);
+    let verticalInterSectionLocation = verticalIntersectionScan(rayDirection);
+    let distanceToHorizontalIntersection = NaN;
+    let distanceToVerticalIntersection = NaN;
+
+    if (!horizontalInterSectionLocation.equals(new Vec2(-1, -1))) {
+        distanceToHorizontalIntersection = playerPosition.distanceTo(horizontalInterSectionLocation);
+    }
+    else {
+        distanceToHorizontalIntersection = Infinity;
+    }
+
+    if (!verticalInterSectionLocation.equals(new Vec2(-1, -1))) {
+        distanceToVerticalIntersection = playerPosition.distanceTo(verticalInterSectionLocation);
+    }
+    else {
+        distanceToVerticalIntersection = Infinity;
+    }
+
+    // (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? drawCircle(temp[0], 10) : 
+    //                                                                       (distanceToVerticalIntersection !== Infinity) ? drawCircle(temp2[0], 10, "green"):
+    //                                                                       {};
+
+    (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? drawLine(playerPosition, horizontalInterSectionLocation, 2) :
+        (distanceToVerticalIntersection !== Infinity) ? drawLine(playerPosition, verticalInterSectionLocation, 2) :
+            {};
+    
+    return (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? distanceToHorizontalIntersection : distanceToVerticalIntersection;
+    
+
+}
+
 function drawCircle(centre, radius, colour="purple"){
     context.beginPath();
     context.arc(...centre.asArray(), radius, 0, 2*Math.PI);
@@ -413,6 +449,12 @@ function drawLine(start, end, thickness=1){
     context.lineTo(...end.asArray());
     context.lineWidth = thickness;
     context.stroke();
+}
+
+function drawRect(start, w, h, ctx=context){
+    ctx.beginPath();
+    ctx.rect(...start.asArray(), w, h);
+    ctx.stroke();
 }
 
 function debug(text){
@@ -431,13 +473,37 @@ function updatePlayerPosition(){
     //playerY = Math.abs(playerY % canvas.height);
 }
 
+function render3DWall(distanceToWall, x, w){
+    // TODO: finish this function
+    let lineHeight = Math.min(((CELL_WIDTH * render.height) / distanceToWall), render.height);
+    let drawStartHeight = Math.max((render.height/2) - (lineHeight/2), 0);
+    let drawEndHeight = Math.min((render.height/2) + (lineHeight/2), (render.height-1));
+    let drawStart = new Vec2(x, drawStartHeight);
+    drawRect(drawStart, w, drawEndHeight - drawStartHeight, renderCtx);
+}
+
 function update()
 {
-    // TODO: Add keyboard/mouse input and update player movement/collisions
     context.clearRect(0, 0, canvas.width, canvas.height);
+    renderCtx.clearRect(0, 0, render.width, render.height);
     drawGrid(6, 6);
     updatePlayerPosition();
     drawPlayerLocation();
+
+    // Cast rays
+    const playerPosition = new Vec2(playerX, playerY);
+    const mousePosition = new Vec2(mouseX, mouseY);
+    const playerDirection = mousePosition.sub(playerPosition).normalise().scale(DIRECTION_VECTOR_SCALE);
+    const stripWidth = (render.width/Math.floor(FOV));
+    for(let i=-Math.floor(FOV/2); i<Math.floor(FOV/2); i++){
+        let distanceToWall = castRay(playerPosition, playerDirection, i);
+        if(isFinite(distanceToWall)){
+            // Note: DO NOT REMOVE BRACKETS! Doing so will affect order of operations
+            render3DWall(distanceToWall, ((i + Math.floor(FOV/2)) * stripWidth), stripWidth);
+        }
+    }
+
+    renderCtx.closePath()
     context.closePath();
 }
 
