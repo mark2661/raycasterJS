@@ -141,49 +141,7 @@ function drawGrid()
 
 function drawPlayerLocation()
 {
-    let mousePosition = new Vec2(mouseX, mouseY);
-    // let playerPosition = new Vec2(playerX, playerY);
-    // let playerDirection = mousePosition.sub(playerPosition).normalise().scale(DIRECTION_VECTOR_SCALE);
-
     drawCircle(playerPosition, 10, "blue");
-
-    // TODO: Refactor this logic into its own function
-    // RAYS
-    // for(let i=-Math.floor((FOV/2)); i=Math.floor(FOV/2); i++){
-    // TODO: FOR loops causing program to crash for some reason, might be because this function is called the the setIntervalFunction
-    // for(let i=0; i=30; i++){
-    // let i = 0;
-    // {
-        // let rayDirection = playerDirection.rotate(i).normalise();
-        // let horizontalInterSectionLocation = horizontalIntersectionScan(rayDirection);
-        // let verticalInterSectionLocation = verticalIntersectionScan(rayDirection);
-        // let distanceToHorizontalIntersection = NaN;
-        // let distanceToVerticalIntersection = NaN;
-
-        // if (!horizontalInterSectionLocation.equals(new Vec2(-1, -1))) {
-        //     distanceToHorizontalIntersection = playerPosition.distanceTo(horizontalInterSectionLocation);
-        // }
-        // else {
-        //     distanceToHorizontalIntersection = Infinity;
-        // }
-
-        // if (!verticalInterSectionLocation.equals(new Vec2(-1, -1))) {
-        //     distanceToVerticalIntersection = playerPosition.distanceTo(verticalInterSectionLocation);
-        // }
-        // else {
-        //     distanceToVerticalIntersection = Infinity;
-        // }
-
-        // // (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? drawCircle(temp[0], 10) : 
-        // //                                                                       (distanceToVerticalIntersection !== Infinity) ? drawCircle(temp2[0], 10, "green"):
-        // //                                                                       {};
-
-        // (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? drawLine(playerPosition, horizontalInterSectionLocation, 2) :
-        //     (distanceToVerticalIntersection !== Infinity) ? drawLine(playerPosition, verticalInterSectionLocation, 2) :
-        //         {};
-
-    // }
-
 }
 
 function getCellTopLeftCoord(row, col){
@@ -450,18 +408,21 @@ function drawCircle(centre, radius, colour="purple"){
     context.stroke()
 }
 
-function drawLine(start, end, thickness=1){
-    context.beginPath();
-    context.moveTo(...start.asArray());
-    context.lineTo(...end.asArray());
-    context.lineWidth = thickness;
-    context.stroke();
+function drawLine(start, end, colour="black", thickness=1, ctx=context){
+    ctx.beginPath();
+    ctx.moveTo(...start.asArray());
+    ctx.lineTo(...end.asArray());
+    ctx.lineWidth = thickness;
+    ctx.strokeStyle = colour;
+    ctx.stroke();
 }
 
-function drawRect(start, w, h, ctx=context){
+function drawRect(start, w, h, colour = "white", ctx=context){
     ctx.beginPath();
     ctx.rect(...start.asArray(), w, h);
-    ctx.stroke();
+    ctx.strokeStyle = colour;
+    // ctx.stroke();
+    ctx.fill();
 }
 
 function debug(text){
@@ -474,13 +435,11 @@ function degreeToRadian(angle){
 }
 
 function updatePlayerPosition(playerDirection){
-    // TODO: make player advance in the direction it is currently facing
+    // TODO: Add collision detection. Check if new position will place the player into a "walled" cell before updating position.
     const SPEED = 5;
     if(keyState.w){ playerPosition = playerPosition.add(playerDirection.scale(SPEED))}
     else if (keyState.s) {playerPosition = playerPosition.sub(playerDirection.scale(SPEED))}
 
-    //playerX = Math.abs(playerX % canvas.width);
-    //playerY = Math.abs(playerY % canvas.height);
 }
 
 function updatePlayerDirection(){
@@ -502,12 +461,22 @@ function render3DWall(distanceToWall, x, w){
     let drawStartHeight = Math.max((render.height/2) - (lineHeight/2), 0);
     let drawEndHeight = Math.min((render.height/2) + (lineHeight/2), (render.height-1));
     let drawStart = new Vec2(x, drawStartHeight);
-    drawRect(drawStart, w, drawEndHeight - drawStartHeight, renderCtx);
+    let drawEnd = new Vec2(x, drawEndHeight);
+    drawLine(drawStart, drawEnd, "red", w, renderCtx);
 }
+
+function renderFloor(x, startHeight){
+    let drawStart = new Vec2(x, startHeight);
+    let drawEnd = new Vec2(x, render.height);
+    const greyColourHexCode = "#c7c3b9";
+    drawLine(drawStart, drawEnd, greyColourHexCode, 1, renderCtx);
+} 
 
 function update()
 {
+    const skyblueColourHexCode = "9acee3";
     context.clearRect(0, 0, canvas.width, canvas.height);
+    // drawRect(new Vec2(0, 0), canvas.width, canvas.height, skyblueColourHexCode, renderCtx);
     renderCtx.clearRect(0, 0, render.width, render.height);
     drawGrid(6, 6);
     // const playerPosition = new Vec2(playerX, playerY);
@@ -515,18 +484,16 @@ function update()
     updatePlayerDirection();
     updatePlayerPosition(playerDirection);
     drawPlayerLocation();
-    debug(`X: ${playerPosition.x}, Y: ${playerPosition.y}`)
 
     // Cast rays
     const mousePosition = new Vec2(mouseX, mouseY);
-    // const playerDirection = mousePosition.sub(playerPosition).normalise().scale(DIRECTION_VECTOR_SCALE);
-    //const playerDirection = playerPosition.rotate(playerAngle).normalise();
-    const stripWidth = (render.width/Math.floor(FOV));
-    for(let i=-Math.floor(FOV/2); i<Math.floor(FOV/2); i++){
+    const stripWidth = Math.ceil(render.width/Math.floor(FOV));
+    // Note: This solution of iterating by fractions of a degree improves graphics but affects performance
+    for(let i=-Math.floor(FOV/2); i<Math.floor(FOV/2); i+= (1/4)){
         let distanceToWall = castRay(playerPosition, playerDirection, i);
         if(isFinite(distanceToWall)){
             // Note: DO NOT REMOVE BRACKETS! Doing so will affect order of operations
-            render3DWall(distanceToWall, ((i + Math.floor(FOV/2)) * stripWidth), stripWidth);
+            render3DWall(distanceToWall, ((i + Math.floor(FOV / 2)) * stripWidth), stripWidth);
         }
     }
 
