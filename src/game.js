@@ -54,6 +54,10 @@ class Vec2{
         return this.x === otherVec2.x && this.y === otherVec2.y;
     }
 
+    copy(){
+        return new Vec2(this.x, this.y);
+    }
+
     asArray(){
         return [this.x, this.y];
     }
@@ -65,17 +69,25 @@ class Vec2{
 
 class Player{
 
-    constructor(position, direction){
+    constructor(position, direction, collision_radius=12){
         this.position = position;
         this.direction = direction.normalise();
+        this.collision_radius = collision_radius;
     }
 
+    getPosition(){
+        return new this.position.copy();
+    }
     translate(speed){
         this.position = this.position.add(this.direction.scale(speed));
     }
 
     rotate(angle){
         this.direction = this.direction.rotate(angle).normalise();
+    }
+
+    copy(){
+        return new Player(this.position, this.direction, this.collision_radius);
     }
 };
 
@@ -92,7 +104,7 @@ render.height = 800;
 render.width = 1100;
 canvas.width = 800;
 canvas.height = 800;
-let player = new Player(new Vec2(275, 420), new Vec2(1, 0));
+let player = new Player(new Vec2(275, 420), new Vec2(1, 1));
 let context = canvas.getContext("2d");
 let renderCtx = render.getContext("2d");
 let keyState = {"w": false, "a": false, "s": false, "d":false};
@@ -163,8 +175,8 @@ function drawGrid()
 
 function drawPlayerLocation()
 {
-    // drawCircle(playerPosition, 10, "blue");
-    drawCircle(player.position, 10, "blue");
+    // drawFillCircle(playerPosition, 10, "blue");
+    drawFillCircle(player.position, 10, "blue");
 }
 
 function getCellTopLeftCoord(row, col){
@@ -205,7 +217,6 @@ function getCellValue(location){
 }
 
 function horizontalIntersectionScan(ray){
-    // TODO: only add intersection point that intersects a wall, break out of loop once the first wall intersection is found
     let currentPos = player.position;
     ray = ray.normalise();
 
@@ -422,7 +433,6 @@ function hasIntersectedWithWallVertical(intersection_position){
 }
 
 function castRay(player, angle){
-    // TODO: return an object containing information about the intersection cell
     let rayDirection = player.direction.rotate(angle).normalise();
     let horizontalInterSectionObject = horizontalIntersectionScan(rayDirection);
     let verticalInterSectionObject = verticalIntersectionScan(rayDirection);
@@ -443,11 +453,10 @@ function castRay(player, angle){
         distanceToVerticalIntersection = Infinity;
     }
 
-    // (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? drawCircle(temp[0], 10) : 
-    //                                                                       (distanceToVerticalIntersection !== Infinity) ? drawCircle(temp2[0], 10, "green"):
+    // (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? drawFillCircle(temp[0], 10) : 
+    //                                                                       (distanceToVerticalIntersection !== Infinity) ? drawFillCircle(temp2[0], 10, "green"):
     //                                                                       {};
 
-    // TODO: fix logic to render ray
     // (distanceToHorizontalIntersection < distanceToVerticalIntersection) ? drawLine(playerPosition, horizontalInterSectionLocation, "yellow", 2) :
     //     (distanceToVerticalIntersection !== Infinity) ? drawLine(playerPosition, verticalInterSectionLocation, "yellow", 2) :
     //         {};
@@ -472,11 +481,18 @@ function castRay(player, angle){
 
 }
 
-function drawCircle(centre, radius, colour="purple"){
+function drawFillCircle(centre, radius, colour="purple"){
     context.beginPath();
     context.arc(...centre.asArray(), radius, 0, 2*Math.PI);
     context.fillStyle = colour;
     context.fill();
+    context.stroke()
+}
+
+function drawCircle(centre, radius, colour="purple"){
+    context.beginPath();
+    context.arc(...centre.asArray(), radius, 0, 2*Math.PI);
+    context.strokeStyle = colour;
     context.stroke()
 }
 
@@ -505,12 +521,53 @@ function degreeToRadian(angle){
     return angle * (Math.PI / 180);
 }
 
+function isPlayerCollidingWithWall(player){
+    // TODO: throw error is player is null
+    if(player){
+        for (let theta = 0; theta < 360; theta++) {
+            const x = player.position.x + (player.collision_radius * Math.cos(theta));
+            const y = player.position.y + (player.collision_radius * Math.sin(theta));
+            const point = new Vec2(x, y);
+            const cell = getCell(point);
+            if (!cell.equals(new Vec2(-1, -1)) && getCellValue(cell) > 0) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 function updatePlayerPosition(){
-    // TODO: Add collision detection. Check if new position will place the player into a "walled" cell before updating position.
-    // TODO: FIX bug causing player to move forward in a curved motion
+    /* TODO: Add collision detection. Check if new position will place the player into a "walled" cell before updating position.
+       add a second invisible circle for collision detection move in steps of 1 degree and check if any point of the circle (using circle equation)
+       collides with an occupied cell
+
+       TODO: find out if updating x or y component is causing collision and only move in the component direction not causing a collision
+    */
     const SPEED = 5;
-    if(keyState.w){player.translate(SPEED)}
-    else if (keyState.s) {player.translate(-SPEED)}
+    const testPlayer = player.copy();
+    if(keyState.w){
+        if (!isPlayerCollidingWithWall(player)){
+            testPlayer.translate(SPEED);
+            if(!isPlayerCollidingWithWall(testPlayer)){
+                player.translate(SPEED);
+            }
+        }
+        else{
+            player.translate(-5);
+        }
+    }
+    else if(keyState.s){
+        if(!isPlayerCollidingWithWall(player)){
+            testPlayer.translate(-1 * SPEED);
+            if(!isPlayerCollidingWithWall(testPlayer)){
+                player.translate(-1 * SPEED)
+            }
+        }
+        else{
+            player.translate(5);
+        }
+    }
 }
 
 function updatePlayerDirection(){
@@ -520,7 +577,6 @@ function updatePlayerDirection(){
 }
 
 function render3DWall(distanceToWall, x, w, c="black"){
-    // TODO: finish this function
     let lineHeight = Math.min(((CELL_WIDTH * render.height) / distanceToWall), render.height);
     let drawStartHeight = Math.max((render.height/2) - (lineHeight/2), 0);
     let drawEndHeight = Math.min((render.height/2) + (lineHeight/2), (render.height-1));
@@ -538,7 +594,6 @@ function renderFloor(x, startHeight){
 
 function update()
 {
-    const skyblueColourHexCode = "9acee3";
     context.clearRect(0, 0, canvas.width, canvas.height);
     renderCtx.clearRect(0, 0, render.width, render.height);
     drawGrid(6, 6);
@@ -548,6 +603,9 @@ function update()
 
     // draw direction ray
     drawLine(player.position, player.position.add(player.direction.normalise().scale(50)), "black", 2, context);
+
+    // draw collision circle
+    drawCircle(player.position, player.collision_radius, "purple");
 
     // Cast rays
     const stripWidth = Math.ceil(render.width/Math.floor(FOV));
