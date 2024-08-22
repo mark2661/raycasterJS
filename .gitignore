@@ -1,0 +1,8 @@
+# ignore readme
+README.txt
+
+# ignore vs code folder
+.vscode
+
+# ignore vim swp files
+*.swp
